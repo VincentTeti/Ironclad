@@ -1,0 +1,78 @@
+# Project Ironclad
+
+A hands-on Linux hardening lab. I took an Ubuntu machine (WSL2), measured its
+security, locked it down layer by layer, attacked it to prove each control
+works, and wrote a script that checks everything automatically.
+
+## Results
+
+| Measure | Before | After |
+|---|---|---|
+| Lynis hardening index | 68 | 81 |
+| verify.sh checks passing | n/a | 15 of 15 |
+| SSH | passwords, root allowed, port 22 | keys only, no root, one user, port 2222 |
+| Firewall | default | deny incoming by default, only needed ports open |
+
+#Environment
+Ubuntu on WSL2 (Windows). Tools: OpenSSH, ufw, fail2ban,
+inotify-tools, Lynis. All tests were run from Windows PowerShell as the
+"attacker" against the WSL machine.
+
+## What I did
+
+# Baseline
+Recorded listening ports, enabled services, users and SUID files, and ran a
+Lynis audit (score 68). 
+
+
+# SSH hardening
+Key-only login, no root, AllowUsers, port 2222, MaxAuthTries 3, LogLevel
+VERBOSE. Tested: password login refused, root refused, old port closed.
+
+
+# Firewall (ufw)
+Deny incoming by default, rate-limited SSH, only the lab web port open.
+
+# fail2ban
+Three failed logins ban an address for ten minutes. 
+
+# Change detection
+watch.sh logs changes to passwd, shadow, sudoers and the SSH config.
+
+
+# System hardening
+sysctl network and kernel settings, blocked unused protocols, reviewed
+services and ports, automatic security updates.
+
+# Verification
+verify.sh prints PASS or FAIL for 15 controls. A second Lynis audit
+raised the score from 68 to 81.
+
+## How to run the verification
+    ./verify.sh
+Expected: "15 passed, 0 failed".
+
+# Attack drills
+| Drill | Result |
+|---|---|
+| Typo in SSH config | sshd -t caught it before restart |
+| Password guessing | fail2ban banned the address |
+| Unauthorized change | watch.sh logged the edit |
+| Firewall disabled | verify.sh reported FAIL |
+| Rollback | restored from backup |
+
+## How this maps to AWS
+| Linux control | AWS equivalent |
+|---|---|
+| ufw | Security groups, network ACLs |
+| SSH keys, AllowUsers | IAM, SSM Session Manager |
+| fail2ban | GuardDuty, WAF rate-based rules |
+| auditd / watch.sh | CloudTrail |
+| unattended-upgrades | Systems Manager Patch Manager |
+| Lynis | Security Hub, Inspector, CIS benchmarks |
+
+
+## What I would do on a real cloud server
+HTTPS everywhere, central log shipping (CloudWatch Logs), SSM Session Manager
+instead of SSH, patching with Patch Manager, and the whole setup as code
+(Terraform).
